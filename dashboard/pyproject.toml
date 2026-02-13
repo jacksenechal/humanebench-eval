@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "humanebench"
+version = "0.1.0"
+description = "Plug-and-play evaluation tool scoring LLM responses on 8 humane AI principles"
+requires-python = ">=3.11"
+dependencies = [
+    "litellm>=1.50.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[project.scripts]
+humanebench = "humanebench.api:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["humanebench"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

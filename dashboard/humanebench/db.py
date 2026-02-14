@@ -256,3 +256,124 @@ def get_conversations_with_scores(limit: int = 50, offset: int = 0) -> list[dict
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_score_trends(time_range: str = "all", group_by: str = "hour") -> list[dict]:
+    """Get average overall scores over time."""
+    conn = _connect()
+    cutoff = _time_cutoff(time_range)
+
+    # Determine the time grouping format
+    if group_by == "hour":
+        time_format = "%Y-%m-%d %H:00:00"
+    elif group_by == "day":
+        time_format = "%Y-%m-%d"
+    else:  # week
+        time_format = "%Y-W%W"
+
+    where = ""
+    params: list = []
+    if cutoff:
+        where = "WHERE er.created_at >= ?"
+        params = [cutoff.isoformat()]
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            strftime('{time_format}', er.created_at) as time_bucket,
+            AVG(er.overall_score) as avg_score,
+            COUNT(*) as count
+        FROM evaluation_runs er
+        {where}
+        GROUP BY time_bucket
+        ORDER BY time_bucket ASC
+        """,
+        params,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_principle_trends(
+    time_range: str = "all",
+    group_by: str = "hour",
+    principle: Optional[str] = None
+) -> list[dict]:
+    """Get principle scores over time."""
+    conn = _connect()
+    cutoff = _time_cutoff(time_range)
+
+    # Determine the time grouping format
+    if group_by == "hour":
+        time_format = "%Y-%m-%d %H:00:00"
+    elif group_by == "day":
+        time_format = "%Y-%m-%d"
+    else:  # week
+        time_format = "%Y-W%W"
+
+    where_clauses = []
+    params: list = []
+
+    if cutoff:
+        where_clauses.append("e.created_at >= ?")
+        params.append(cutoff.isoformat())
+
+    if principle:
+        where_clauses.append("e.principle = ?")
+        params.append(principle)
+
+    where = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            strftime('{time_format}', e.created_at) as time_bucket,
+            e.principle,
+            AVG(e.score) as avg_score,
+            COUNT(*) as count
+        FROM evaluations e
+        {where}
+        GROUP BY time_bucket, e.principle
+        ORDER BY time_bucket ASC, e.principle
+        """,
+        params,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_incident_trends(time_range: str = "all", group_by: str = "hour") -> list[dict]:
+    """Get incident counts over time."""
+    conn = _connect()
+    cutoff = _time_cutoff(time_range)
+
+    # Determine the time grouping format
+    if group_by == "hour":
+        time_format = "%Y-%m-%d %H:00:00"
+    elif group_by == "day":
+        time_format = "%Y-%m-%d"
+    else:  # week
+        time_format = "%Y-W%W"
+
+    where = "WHERE e.score < 0"
+    params: list = []
+    if cutoff:
+        where += " AND e.created_at >= ?"
+        params.append(cutoff.isoformat())
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            strftime('{time_format}', e.created_at) as time_bucket,
+            COUNT(*) as incident_count,
+            SUM(CASE WHEN e.score <= -1.0 THEN 1 ELSE 0 END) as violations,
+            SUM(CASE WHEN e.score > -1.0 AND e.score < 0 THEN 1 ELSE 0 END) as concerns
+        FROM evaluations e
+        {where}
+        GROUP BY time_bucket
+        ORDER BY time_bucket ASC
+        """,
+        params,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

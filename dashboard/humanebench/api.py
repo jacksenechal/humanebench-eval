@@ -125,6 +125,33 @@ def api_conversation_detail(conversation_id: str) -> dict:
     }
 
 
+@app.get("/api/trends/scores")
+def api_score_trends(
+    time_range: str = Query("all"),
+    group_by: str = Query("hour", pattern="^(hour|day|week)$"),
+) -> list:
+    return db.get_score_trends(time_range=time_range, group_by=group_by)
+
+
+@app.get("/api/trends/principles")
+def api_principle_trends(
+    time_range: str = Query("all"),
+    group_by: str = Query("hour", pattern="^(hour|day|week)$"),
+    principle: Optional[str] = Query(None),
+) -> list:
+    return db.get_principle_trends(
+        time_range=time_range, group_by=group_by, principle=principle
+    )
+
+
+@app.get("/api/trends/incidents")
+def api_incident_trends(
+    time_range: str = Query("all"),
+    group_by: str = Query("hour", pattern="^(hour|day|week)$"),
+) -> list:
+    return db.get_incident_trends(time_range=time_range, group_by=group_by)
+
+
 def main() -> None:
     import uvicorn
 

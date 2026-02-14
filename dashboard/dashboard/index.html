@@ -70,6 +70,7 @@
 <!-- Tab Navigation -->
 <nav class="px-6 flex gap-6 border-b border-blue-900" style="background:#0f0e17;">
   <button onclick="switchTab('overview')" id="tab-overview" class="py-3 px-1 text-sm font-medium tab-active transition-colors">Overview</button>
+  <button onclick="switchTab('trends')" id="tab-trends" class="py-3 px-1 text-sm font-medium tab-inactive transition-colors">Trends</button>
   <button onclick="switchTab('incidents')" id="tab-incidents" class="py-3 px-1 text-sm font-medium tab-inactive transition-colors">Incidents</button>
   <button onclick="switchTab('conversations')" id="tab-conversations" class="py-3 px-1 text-sm font-medium tab-inactive transition-colors">Conversations</button>
 </nav>
@@ -128,6 +129,57 @@
     <div class="card p-6" id="insights-panel">
       <h2 class="text-sm font-semibold text-gray-300 mb-3">Actionable Insights</h2>
       <div id="insights-content" class="text-sm text-gray-400">Loading insights...</div>
+    </div>
+  </div>
+
+  <!-- ===== TRENDS TAB ===== -->
+  <div id="view-trends" style="display:none;">
+    <!-- Filters -->
+    <div class="flex items-center gap-6 mb-6 flex-wrap">
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-400">Time range:</span>
+        <div class="flex gap-2">
+          <button onclick="setTrendTimeRange('24h')" id="trend-tr-24h" class="px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition">24h</button>
+          <button onclick="setTrendTimeRange('7d')" id="trend-tr-7d" class="px-3 py-1 rounded text-xs text-white transition" style="background:#e94560;">7d</button>
+          <button onclick="setTrendTimeRange('30d')" id="trend-tr-30d" class="px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition">30d</button>
+          <button onclick="setTrendTimeRange('all')" id="trend-tr-all" class="px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition">All time</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-400">Group by:</span>
+        <div class="flex gap-2">
+          <button onclick="setTrendGroupBy('hour')" id="trend-gb-hour" class="px-3 py-1 rounded text-xs text-white transition" style="background:#e94560;">Hour</button>
+          <button onclick="setTrendGroupBy('day')" id="trend-gb-day" class="px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition">Day</button>
+          <button onclick="setTrendGroupBy('week')" id="trend-gb-week" class="px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition">Week</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Score Trend -->
+    <div class="card p-6 mb-6">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Overall Humane Score Over Time</h2>
+      <div class="relative" style="height:280px;">
+        <canvas id="overall-trend-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Principle Trends -->
+    <div class="card p-6 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-sm font-semibold text-gray-300">Principle Scores Over Time</h2>
+        <div class="flex gap-2 flex-wrap" id="principle-toggles"></div>
+      </div>
+      <div class="relative" style="height:400px;">
+        <canvas id="principles-trend-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Incidents Trend -->
+    <div class="card p-6">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Incidents Over Time</h2>
+      <div class="relative" style="height:280px;">
+        <canvas id="incidents-trend-chart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -195,6 +247,14 @@ let currentTab = 'overview';
 let currentTimeRange = 'all';
 let radarChart = null;
 let overviewData = null;
+
+// Trend tracking state
+let trendTimeRange = '7d';
+let trendGroupBy = 'hour';
+let overallTrendChart = null;
+let principlesTrendChart = null;
+let incidentsTrendChart = null;
+let visiblePrinciples = null;
 
 const PRINCIPLE_LABELS = {
   respect_attention: 'Respect Attention',
@@ -309,12 +369,13 @@ function truncate(str, n = 80) {
 
 function switchTab(tab) {
   currentTab = tab;
-  ['overview', 'incidents', 'conversations'].forEach(t => {
+  ['overview', 'trends', 'incidents', 'conversations'].forEach(t => {
     document.getElementById(`view-${t}`).style.display = t === tab ? 'block' : 'none';
     document.getElementById(`tab-${t}`).className =
       `py-3 px-1 text-sm font-medium ${t === tab ? 'tab-active' : 'tab-inactive'} transition-colors`;
   });
   if (tab === 'overview') loadOverview();
+  if (tab === 'trends') loadTrends();
   if (tab === 'incidents') loadIncidents();
   if (tab === 'conversations') loadConversations();
 }
@@ -660,6 +721,288 @@ function renderConvDetail(data) {
   `;
 }
 
+// ===== TRENDS TAB FUNCTIONS =====
+
+const PRINCIPLE_COLORS = {
+  respect_attention: '#3b82f6',      // blue
+  meaningful_choices: '#8b5cf6',     // purple
+  enhance_capabilities: '#ec4899',   // pink
+  dignity_safety: '#f59e0b',         // amber
+  healthy_relationships: '#10b981',  // green
+  longterm_wellbeing: '#06b6d4',     // cyan
+  transparency_honesty: '#f97316',   // orange
+  equity_inclusion: '#14b8a6',       // teal
+};
+
+function setTrendTimeRange(range) {
+  trendTimeRange = range;
+  ['24h','7d','30d','all'].forEach(r => {
+    const btn = document.getElementById(`trend-tr-${r}`);
+    if (r === range) {
+      btn.style.background = '#e94560';
+      btn.className = 'px-3 py-1 rounded text-xs text-white transition';
+    } else {
+      btn.style.background = '';
+      btn.className = 'px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition';
+    }
+  });
+  loadTrends();
+}
+
+function setTrendGroupBy(groupBy) {
+  trendGroupBy = groupBy;
+  ['hour','day','week'].forEach(g => {
+    const btn = document.getElementById(`trend-gb-${g}`);
+    if (g === groupBy) {
+      btn.style.background = '#e94560';
+      btn.className = 'px-3 py-1 rounded text-xs text-white transition';
+    } else {
+      btn.style.background = '';
+      btn.className = 'px-3 py-1 rounded text-xs bg-blue-900 text-gray-300 hover:bg-blue-800 transition';
+    }
+  });
+  loadTrends();
+}
+
+function togglePrinciple(principle) {
+  if (visiblePrinciples.has(principle)) {
+    visiblePrinciples.delete(principle);
+  } else {
+    visiblePrinciples.add(principle);
+  }
+  renderPrincipleToggles();
+  loadTrends();
+}
+
+function renderPrincipleToggles() {
+  const container = document.getElementById('principle-toggles');
+  container.innerHTML = PRINCIPLE_ORDER.map(p => {
+    const isVisible = visiblePrinciples.has(p);
+    const color = PRINCIPLE_COLORS[p];
+    return `
+      <button
+        onclick="togglePrinciple('${p}')"
+        class="px-2 py-1 rounded text-xs transition"
+        style="background: ${isVisible ? color : '#1a1a2e'}; color: ${isVisible ? '#fff' : '#666'}; border: 1px solid ${color};">
+        ${PRINCIPLE_LABELS[p]}
+      </button>
+    `;
+  }).join('');
+}
+
+async function loadTrends() {
+  if (!visiblePrinciples) {
+    visiblePrinciples = new Set(PRINCIPLE_ORDER);
+    renderPrincipleToggles();
+  }
+
+  try {
+    const [scoresRes, principlesRes, incidentsRes] = await Promise.all([
+      fetch(`${API}/api/trends/scores?time_range=${trendTimeRange}&group_by=${trendGroupBy}`),
+      fetch(`${API}/api/trends/principles?time_range=${trendTimeRange}&group_by=${trendGroupBy}`),
+      fetch(`${API}/api/trends/incidents?time_range=${trendTimeRange}&group_by=${trendGroupBy}`)
+    ]);
+
+    const [scoresData, principlesData, incidentsData] = await Promise.all([
+      scoresRes.json(),
+      principlesRes.json(),
+      incidentsRes.json()
+    ]);
+
+    renderOverallTrendChart(scoresData);
+    renderPrinciplesTrendChart(principlesData);
+    renderIncidentsTrendChart(incidentsData);
+  } catch(e) {
+    console.error('Trends load failed:', e);
+  }
+}
+
+function renderOverallTrendChart(data) {
+  const labels = data.map(d => d.time_bucket);
+  const scores = data.map(d => d.avg_score);
+
+  if (overallTrendChart) overallTrendChart.destroy();
+  const ctx = document.getElementById('overall-trend-chart').getContext('2d');
+  overallTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Avg Score',
+        data: scores,
+        borderColor: '#e94560',
+        backgroundColor: 'rgba(233,69,96,0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: -1,
+          max: 1,
+          ticks: { color: '#8892a4' },
+          grid: { color: '#0f3460' },
+        },
+        x: {
+          ticks: { color: '#8892a4', maxRotation: 45, minRotation: 45 },
+          grid: { color: '#0f3460' },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` Score: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderPrinciplesTrendChart(data) {
+  // Group data by principle
+  const principleData = {};
+  PRINCIPLE_ORDER.forEach(p => {
+    principleData[p] = [];
+  });
+
+  const allTimeBuckets = [...new Set(data.map(d => d.time_bucket))].sort();
+
+  // Initialize all principles with zeros for all time buckets
+  allTimeBuckets.forEach(bucket => {
+    PRINCIPLE_ORDER.forEach(p => {
+      principleData[p].push({ time_bucket: bucket, avg_score: null });
+    });
+  });
+
+  // Fill in actual data
+  data.forEach(d => {
+    const bucketIndex = allTimeBuckets.indexOf(d.time_bucket);
+    if (bucketIndex >= 0 && principleData[d.principle]) {
+      principleData[d.principle][bucketIndex] = d;
+    }
+  });
+
+  const datasets = PRINCIPLE_ORDER
+    .filter(p => visiblePrinciples.has(p))
+    .map(p => ({
+      label: PRINCIPLE_LABELS[p],
+      data: principleData[p].map(d => d.avg_score),
+      borderColor: PRINCIPLE_COLORS[p],
+      backgroundColor: PRINCIPLE_COLORS[p] + '20',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.4,
+      spanGaps: true,
+    }));
+
+  if (principlesTrendChart) principlesTrendChart.destroy();
+  const ctx = document.getElementById('principles-trend-chart').getContext('2d');
+  principlesTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: allTimeBuckets,
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: -1,
+          max: 1,
+          ticks: { color: '#8892a4' },
+          grid: { color: '#0f3460' },
+        },
+        x: {
+          ticks: { color: '#8892a4', maxRotation: 45, minRotation: 45 },
+          grid: { color: '#0f3460' },
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#8892a4',
+            font: { size: 10 },
+            usePointStyle: true,
+            padding: 10
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderIncidentsTrendChart(data) {
+  const labels = data.map(d => d.time_bucket);
+  const violations = data.map(d => d.violations);
+  const concerns = data.map(d => d.concerns);
+
+  if (incidentsTrendChart) incidentsTrendChart.destroy();
+  const ctx = document.getElementById('incidents-trend-chart').getContext('2d');
+  incidentsTrendChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Violations (-1.0)',
+          data: violations,
+          backgroundColor: '#f87171',
+          borderColor: '#f87171',
+          borderWidth: 1,
+        },
+        {
+          label: 'Concerns (-0.5)',
+          data: concerns,
+          backgroundColor: '#fb923c',
+          borderColor: '#fb923c',
+          borderWidth: 1,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#8892a4', stepSize: 1 },
+          grid: { color: '#0f3460' },
+        },
+        x: {
+          ticks: { color: '#8892a4', maxRotation: 45, minRotation: 45 },
+          grid: { color: '#0f3460' },
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color: '#8892a4', usePointStyle: true }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y}`
+          }
+        }
+      }
+    }
+  });
+}
+
 function updateLastUpdated() {
   document.getElementById('last-updated').textContent =
     'Updated ' + new Date().toLocaleTimeString();
@@ -667,6 +1010,7 @@ function updateLastUpdated() {
 
 async function refresh() {
   if (currentTab === 'overview') await loadOverview();
+  if (currentTab === 'trends') await loadTrends();
   if (currentTab === 'incidents') await loadIncidents();
   if (currentTab === 'conversations') await loadConversations();
   updateLastUpdated();

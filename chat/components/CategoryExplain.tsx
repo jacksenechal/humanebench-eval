@@ -1,37 +1,38 @@
 "use client";
 
-import type { CategoryReason, CategoryScore, RiskCategory } from "@/lib/types";
+import { PRINCIPLE_LABELS, SCORE_LABELS } from "@/lib/mockData";
+import type { PrincipleReason, PrincipleScore, Principle } from "@/lib/types";
 
 interface Props {
-  category: RiskCategory;
-  score?: CategoryScore;
-  reason?: CategoryReason;
+  principle: Principle;
+  score?: PrincipleScore;
+  reason?: PrincipleReason;
 }
 
-export function CategoryExplain({ category, score, reason }: Props) {
+export function CategoryExplain({ principle, score, reason }: Props) {
   if (!score || !reason) {
     return (
       <div className="explain-box">
-        <h3>{category}</h3>
-        <p>No detail available yet for this category.</p>
+        <h3>{PRINCIPLE_LABELS[principle]}</h3>
+        <p>No detail available yet for this principle.</p>
       </div>
     );
   }
 
+  const scoreLabel = SCORE_LABELS[score.score.toString()] ?? "Unknown";
+  const scoreText = score.score >= 0 ? `+${score.score.toFixed(1)}` : score.score.toFixed(1);
+
   return (
     <div className="explain-box">
-      <h3>{category}</h3>
+      <h3>{PRINCIPLE_LABELS[principle]}</h3>
       <p>{reason.headline}</p>
       <p>{reason.rationale}</p>
       <p>
-        Score: {score.score.toFixed(2)} | Baseline:{" "}
-        {score.baseline.toFixed(2)} | Delta: {score.delta.toFixed(2)} |
-        Confidence:{" "}
-        {score.confidence.toFixed(2)}
+        Score: {scoreText} ({scoreLabel}) | Confidence: {score.confidence.toFixed(2)}
       </p>
       <ul>
-        {reason.evidence.map((ev) => (
-          <li key={ev}>{ev}</li>
+        {reason.evidence.map((ev, idx) => (
+          <li key={idx}>{ev}</li>
         ))}
       </ul>
     </div>

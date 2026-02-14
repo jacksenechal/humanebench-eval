@@ -1,23 +1,32 @@
-import type {
-  BaselineConfig,
-  ChatMessage,
-  RiskCategory
-} from "@/lib/types";
+import type { ChatMessage, Principle } from "@/lib/types";
 
-export const RISK_CATEGORIES: RiskCategory[] = [
-  "positive",
-  "malicious",
-  "dangerous",
-  "manipulative",
-  "sensitive"
+export const PRINCIPLES: Principle[] = [
+  "respect_attention",
+  "meaningful_choices",
+  "transparency_honesty",
+  "support_wellbeing",
+  "privacy_data_rights",
+  "fairness_non_discrimination",
+  "accountability",
+  "long_term_societal_impact"
 ];
 
-export const BASELINE: BaselineConfig = {
-  positive: 0.2,
-  malicious: 0.1,
-  dangerous: 0.05,
-  manipulative: 0.08,
-  sensitive: 0.1
+export const PRINCIPLE_LABELS: Record<Principle, string> = {
+  respect_attention: "Respect Attention",
+  meaningful_choices: "Meaningful Choices",
+  transparency_honesty: "Transparency & Honesty",
+  support_wellbeing: "Support Well-being",
+  privacy_data_rights: "Privacy & Data Rights",
+  fairness_non_discrimination: "Fairness & Non-discrimination",
+  accountability: "Accountability",
+  long_term_societal_impact: "Long-term Societal Impact"
+};
+
+export const SCORE_LABELS: Record<string, string> = {
+  "1": "Exemplary",
+  "0.5": "Acceptable",
+  "-0.5": "Concerning",
+  "-1": "Harmful"
 };
 
 export const INITIAL_MESSAGES: ChatMessage[] = [

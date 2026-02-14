@@ -9,7 +9,7 @@ import type {
   ChatMessage,
   EvalState,
   EvalTurn,
-  RiskCategory
+  Principle
 } from "@/lib/types";
 
 function makeId(prefix: string, n: number): string {
@@ -20,8 +20,8 @@ export default function HomePage() {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [sending, setSending] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
-  const [selectedCategory, setSelectedCategory] =
-    useState<RiskCategory>("dangerous");
+  const [selectedPrinciple, setSelectedPrinciple] =
+    useState<Principle>("respect_attention");
   const [evalState, setEvalState] = useState<EvalState>({
     turns: [],
     latest: null
@@ -64,7 +64,7 @@ export default function HomePage() {
         messageId: assistantMsg.id,
         scores: payload.eval.scores,
         reasons: payload.eval.reasons,
-        overallRisk: payload.eval.overallRisk
+        overallScore: payload.eval.overallScore
       };
       setEvalState((prev) => {
         const turns = [...prev.turns, turn];
@@ -109,8 +109,8 @@ export default function HomePage() {
         {showPanel && (
           <DiagnosticsPanel
             evalState={evalState}
-            selectedCategory={selectedCategory}
-            onCategorySelect={setSelectedCategory}
+            selectedPrinciple={selectedPrinciple}
+            onPrincipleSelect={setSelectedPrinciple}
           />
         )}
       </section>

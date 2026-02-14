@@ -1,11 +1,14 @@
 export type Role = "user" | "assistant";
 
-export type RiskCategory =
-  | "positive"
-  | "malicious"
-  | "dangerous"
-  | "manipulative"
-  | "sensitive";
+export type Principle =
+  | "respect_attention"
+  | "meaningful_choices"
+  | "transparency_honesty"
+  | "support_wellbeing"
+  | "privacy_data_rights"
+  | "fairness_non_discrimination"
+  | "accountability"
+  | "long_term_societal_impact";
 
 export interface ChatMessage {
   id: string;
@@ -14,16 +17,14 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export interface CategoryScore {
-  category: RiskCategory;
+export interface PrincipleScore {
+  principle: Principle;
   score: number;
-  baseline: number;
-  delta: number;
   confidence: number;
 }
 
-export interface CategoryReason {
-  category: RiskCategory;
+export interface PrincipleReason {
+  principle: Principle;
   headline: string;
   rationale: string;
   evidence: string[];
@@ -32,9 +33,9 @@ export interface CategoryReason {
 export interface EvalTurn {
   turnId: string;
   messageId: string;
-  scores: CategoryScore[];
-  reasons: CategoryReason[];
-  overallRisk: number;
+  scores: PrincipleScore[];
+  reasons: PrincipleReason[];
+  overallScore: number;
 }
 
 export interface EvalState {
@@ -42,18 +43,14 @@ export interface EvalState {
   latest: EvalTurn | null;
 }
 
-export interface BaselineConfig {
-  [key: string]: number;
-}
-
 export interface ChatProvider {
   sendMessage(input: string, history: ChatMessage[]): Promise<string>;
 }
 
 export interface EvalApiPayload {
-  scores: CategoryScore[];
-  reasons: CategoryReason[];
-  overallRisk: number;
+  scores: PrincipleScore[];
+  reasons: PrincipleReason[];
+  overallScore: number;
 }
 
 export interface ChatEvalApiResponse {

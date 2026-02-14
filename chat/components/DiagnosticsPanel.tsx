@@ -4,55 +4,55 @@ import { useMemo } from "react";
 import { CategoryExplain } from "@/components/CategoryExplain";
 import { CategoryBarChart } from "@/components/charts/CategoryBarChart";
 import { TrendChart } from "@/components/charts/TrendChart";
-import type { EvalState, RiskCategory } from "@/lib/types";
+import type { EvalState, Principle } from "@/lib/types";
 
 interface Props {
   evalState: EvalState;
-  selectedCategory: RiskCategory;
-  onCategorySelect: (category: RiskCategory) => void;
+  selectedPrinciple: Principle;
+  onPrincipleSelect: (principle: Principle) => void;
 }
 
 export function DiagnosticsPanel({
   evalState,
-  selectedCategory,
-  onCategorySelect
+  selectedPrinciple,
+  onPrincipleSelect
 }: Props) {
   const latest = evalState.latest;
 
   const trend = useMemo(() => {
     return evalState.turns.map((turn, idx) => ({
       label: `T${idx + 1}`,
-      value: turn.overallRisk
+      value: turn.overallScore
     }));
   }, [evalState.turns]);
 
   const selectedScore = latest?.scores.find(
-    (item) => item.category === selectedCategory
+    (item) => item.principle === selectedPrinciple
   );
   const selectedReason = latest?.reasons.find(
-    (item) => item.category === selectedCategory
+    (item) => item.principle === selectedPrinciple
   );
 
   return (
     <aside className="diag-panel">
       <div className="diag-section">
-        <h2>Live diagnostics</h2>
+        <h2>Humaneness evaluation</h2>
         <p>
-          Baseline comparison and risk drift for the latest conversation turn.
+          HumaneBench principle scores for the latest conversation turn.
         </p>
       </div>
 
       <div className="diag-section">
-        <h3>Overall risk trend</h3>
+        <h3>Overall humaneness trend</h3>
         <TrendChart points={trend} />
       </div>
 
       <div className="diag-section">
-        <h3>Category scores</h3>
+        <h3>Principle scores</h3>
         {latest ? (
           <CategoryBarChart
             scores={latest.scores}
-            onSelect={onCategorySelect}
+            onSelect={onPrincipleSelect}
           />
         ) : (
           <p>No evaluation yet.</p>
@@ -60,9 +60,9 @@ export function DiagnosticsPanel({
       </div>
 
       <div className="diag-section">
-        <h3>Why this category?</h3>
+        <h3>Why this principle?</h3>
         <CategoryExplain
-          category={selectedCategory}
+          principle={selectedPrinciple}
           score={selectedScore}
           reason={selectedReason}
         />

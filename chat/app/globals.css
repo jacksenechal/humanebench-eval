@@ -249,10 +249,9 @@ html, body {
   padding: 0.35rem 0.4rem;
   width: 100%;
   display: grid;
-  grid-template-columns: 80px 1fr 38px;
+  grid-template-columns: 140px 1fr 38px;
   align-items: center;
   gap: 0.45rem;
-  text-transform: capitalize;
   cursor: pointer;
   border: 1px solid var(--border);
   background: #202838;
@@ -276,10 +275,6 @@ html, body {
   height: 100%;
   display: block;
   background: var(--accent);
-}
-
-.bar-fill.risk {
-  background: var(--risk);
 }
 
 /* trend */
